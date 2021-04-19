@@ -33,7 +33,7 @@ exp_gene <- rna_data[-not_exp_index, ]
 # ==============================================================================
 
 source("stat_function/within_Group_Summary.R")
-source("plot_function/library_distribution.R")
+source("plot_function/library_histogram.R")
 
 # Get the count of reads for each library
 Nk <- colSums(rna_data[, -1])
@@ -60,7 +60,7 @@ for(i in 1:length(cpm_summary_list)){
 knitr::kable(cpm_summary, format = "markdown")
 
 # Plot the distribution of the gene expression for each library
-histogram_list <- lapply(library_names, library_distribution, data = cpm_rna)
+histogram_list <- lapply(library_names, library_histogram, data = cpm_rna)
 ggpubr::ggarrange(plotlist = histogram_list, nrow = 2, ncol = 4)
 
 # ==============================================================================
@@ -78,19 +78,20 @@ cpm_most_exp <- lapply(library_names, select_N_most_expressed, data = cpm_rna, N
 # Assign a weight based on the rank of the gene in each library
 cpm_ranks <- NULL
 for(i in 1:length(cpm_most_exp)) {
-      cpm_ranks <- gene_rank_expression(cpm_most_exp[[i]], cpm_ranks)
+      cpm_ranks <- gene_rank_expression(data = cpm_most_exp[[i]], ranks = cpm_ranks)
 }
 
 # Order the counts in descending order
 cpm_ranks <- cpm_ranks[order(-cpm_ranks[, 2]), ]
 knitr::kable(cpm_ranks, format = "markdown")
 
-
-
-
+source("plot_function/library_barplot.R")
 
 # Barplot of the 30 most expressed gene in each library
-
+cpm_barplot_list <- lapply(library_names, library_barplot, 
+                           data = cpm_rna[which(cpm_rna$Gene_id %in% cpm_ranks$Gene_id), ], 
+                           unit = "Counts per million")
+ggpubr::ggarrange(plotlist = cpm_barplot_list, nrow = 2, ncol = 4)
 
 # ==============================================================================
 

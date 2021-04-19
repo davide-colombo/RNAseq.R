@@ -16,6 +16,6 @@
 select_N_most_expressed <- function(data, target, N) {
       df <- data %>%
             select("Gene_id", as.name(target)) %>%
-            top_n(N, wt = data[, target])
-      return (df)
+            arrange(desc(data[, target]))
+      return (df[1:N, ])
 }

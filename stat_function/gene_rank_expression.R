@@ -20,13 +20,11 @@ gene_rank_expression <- function(data, ranks) {
                         select(Gene_id) %>%
                         mutate(rank_exp = weight)
       } else {
-            library_pos <- vector(mode = "numeric", length = nrow(data))
             for(gene_idx in 1:nrow(data)) {
                   gene_pos <- which(ranks[, "Gene_id"] == data[gene_idx, "Gene_id"])
                   if(length(gene_pos) != 0) {
-                        ranks[gene_pos, "rank_exp"] <- ranks[gene_pos, "rank_exp"] + weight[gene_pos]
-                        library_pos[gene_pos] <- gene_pos
-                  } 
+                        ranks[gene_pos, "rank_exp"] <- ranks[gene_pos, "rank_exp"] + weight[gene_idx]
+                  }
             }
       }
       

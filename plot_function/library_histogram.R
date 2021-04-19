@@ -11,9 +11,9 @@
 # @Return:
 # df:             the histogram plot take with ggplot2 library
 
-library_distribution <- function(data, target) {
+library_histogram <- function(data, target) {
       ggplot2::ggplot(data = data, mapping = aes(x = data[, target])) +
             geom_histogram(color = "green", bins = 100) +
-            labs(title = paste0("Histogram of the group", as.character(target)), 
+            labs(title = paste0("CPM histogram of ", as.character(target), " library"), 
                  x = as.character(target))
 }
