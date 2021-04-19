@@ -95,6 +95,28 @@ ggpubr::ggarrange(plotlist = cpm_barplot_list, nrow = 2, ncol = 4)
 
 # ==============================================================================
 
+#                         FOLD CHANGE BETWEEN SAMPLES
+
+# ==============================================================================
+
+group_comparison <- data.frame(KO = colnames(cpm_rna)[grep("KO", colnames(cpm_rna))], 
+                                 WT = colnames(cpm_rna)[grep("WT", colnames(cpm_rna))])
+# Compute the fold change between groups
+fc <- purrr::pmap(group_comparison, compute_fold_change, data = cpm_rna)
+
+cpm_rna_fc <- NULL
+for(i in 1:length(fc)) {
+      cpm_rna_fc <- cbind(cpm_rna_fc, fc[[i]])
+}
+colnames(cpm_rna_fc) <- apply(group_comparison, 1, function(x) paste("log2(", x, "/Nk) ", collapse = " - "))
+cpm_rna_fc <- as.data.frame(cpm_rna_fc)
+
+fc_names <- colnames(cpm_rna_fc)
+fc_hist_list <- lapply(fc_names, library_histogram, data = cpm_rna_fc)
+ggpubr::ggarrange(plotlist = fc_hist_list, nrow = 2, ncol = 2)
+
+# ==============================================================================
+
 #                                   DOMANDA 3
 # trasformare i valori di espressione dei geni espressi in scala log2
 
