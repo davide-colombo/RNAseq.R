@@ -27,6 +27,73 @@ exp_gene <- rna_data[-not_exp_index, ]
 
 # ==============================================================================
 
+#                          COUNTS PER MILLION NORMALIZATION
+#                             (WITHIN GROUPS VARIABILITY)
+
+# ==============================================================================
+
+source("stat_function/within_Group_Summary.R")
+source("plot_function/library_distribution.R")
+
+# Get the count of reads for each library
+Nk <- colSums(rna_data[, -1])
+
+# Counts per million normalization
+cpm_library <- as.data.frame(t(apply(rna_data[, -1], 1, '/', Nk)))
+cpm_rna <- cpm_library %>%
+            mutate(Gene_id = rna_data$Gene_id) %>%
+            relocate(Gene_id, .before = everything())
+
+# Extract the name of the libraries (samples)
+library_names <- colnames(cpm_rna[, -1])
+
+# Compute the summary
+cpm_summary_list <- lapply(library_names, within_Group_Summary, data = cpm_rna[, -1], unit = "cpm")
+
+# Transform in data frame
+cpm_summary <- NULL
+for(i in 1:length(cpm_summary_list)){
+      cpm_summary <- rbind(cpm_summary, cpm_summary_list[[i]])
+}
+
+# Summary for each library
+knitr::kable(cpm_summary, format = "markdown")
+
+# Plot the distribution of the gene expression for each library
+histogram_list <- lapply(library_names, library_distribution, data = cpm_rna)
+ggpubr::ggarrange(plotlist = histogram_list, nrow = 2, ncol = 4)
+
+# ==============================================================================
+
+#                          CPM BASED GENE RANK EXPRESSION
+
+# ==============================================================================
+
+source("stat_function/select_N_most_expressed.R")
+source("stat_function/gene_rank_expression.R")
+
+# Select the 30 most expressed gene in each library
+cpm_most_exp <- lapply(library_names, select_N_most_expressed, data = cpm_rna, N = 30)
+
+# Assign a weight based on the rank of the gene in each library
+cpm_ranks <- NULL
+for(i in 1:length(cpm_most_exp)) {
+      cpm_ranks <- gene_rank_expression(cpm_most_exp[[i]], cpm_ranks)
+}
+
+# Order the counts in descending order
+cpm_ranks <- cpm_ranks[order(-cpm_ranks[, 2]), ]
+knitr::kable(cpm_ranks, format = "markdown")
+
+
+
+
+
+# Barplot of the 30 most expressed gene in each library
+
+
+# ==============================================================================
+
 #                                   DOMANDA 3
 # trasformare i valori di espressione dei geni espressi in scala log2
 
