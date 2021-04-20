@@ -237,15 +237,17 @@ log2_exp_gene <- log2(exp_gene[, -1]) %>%
 
 # ==============================================================================
 
+source("plot_function/library_boxplot.R")
+
 # Select the name of the target variables for which we have to compute the box plot
 box_target <- colnames(exp_gene[, -1])
 
 # Boxplot list on the original scale of the data
-boxlist <- lapply(box_target, compute_BOXPLOT, data = exp_gene, title = "Original scale")
+boxlist <- lapply(box_target, library_boxplot, data = exp_gene, title = "Original scale")
 ggpubr::ggarrange(plotlist = boxlist, nrow = 2, ncol = 4)
 
 # Boxplot list after log transform
-log2_boxlist <- lapply(box_target, compute_BOXPLOT, data = log2_exp_gene, title = "log2 scale")
+log2_boxlist <- lapply(box_target, library_boxplot, data = log2_exp_gene, title = "log2 scale")
 ggpubr::ggarrange(plotlist = log2_boxlist, ncol = 4, nrow = 2)
 
 
