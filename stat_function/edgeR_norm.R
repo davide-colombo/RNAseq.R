@@ -34,7 +34,7 @@ edgeR_norm <- function(data, exptresh) {
                         relocate(Gene_id, .before = everything())
             
             ordered <- current[order(current[, 2]), ]
-            colnames(ordered)[2] <- paste0("log2(", ref_vs_other[i, ], "/Nk) ", collapse = " - ")
+            colnames(ordered)[2] <- paste0(ref_vs_other[i, 2])
             fc_list[[i]] <- ordered
       }
       
@@ -52,24 +52,39 @@ edgeR_norm <- function(data, exptresh) {
                         mutate(Gene_id = exp_data[, 1]) %>%
                         relocate(Gene_id, .before = everything())
             ordered <- current[order(current[, 2]), ]
-            colnames(ordered) <- paste0("Avg(log2(", ref_vs_other[i, ], "/Nk) ", collapse = " - ")
+            colnames(ordered)[2] <- paste0("Avg(log2(", ref_vs_other[i, ], "/Nk) ", collapse = " - ")
             avg_fc_list[[i]] <- ordered
       }
       
       # Seventh step: filter biased genes and highly/lowly expressed genes
-      # fc_tresh <- round(0.3 * nrow(fc_df))
-      # fc_filt <- fc_df[(fc_tresh+1):(nrow(fc_df)-fc_tresh), ]
-      # 
-      # avg_fc_tresh <- round(0.05*nrow(avg_fc_df))
-      # avg_fc_filt <- avg_fc_df[(avg_fc_tresh+1):(nrow(avg_fc_df)-avg_fc_tresh), ]
+      filt_fc_list <- lapply(fc_list, filter_top_bottom, tresh = 0.3)
+      filt_avg_list <- lapply(avg_fc_list, filter_top_bottom, tresh = 0.05)
+      
+      # Eigth step: identify the genes in both filtered fold change list and 
+      #             filtered average fold change list
+      for(i in 1:length(filt_fc_list)) {
+            sel_index <- which((filt_fc_list[[i]]$Gene_id %in% filt_avg_list[[i]]$Gene_id) == T)
+            filt_fc_list[[i]] <- filt_fc_list[[i]][sel_index, ]
+      }
+      
+      # Nineth step: calculated the weighted average of the filtered log2 ratios
+      #              using the number of reads as weight
+      weighted_fc_avg <- NULL
+      for(i in 1:length(filt_fc_list)) {
+            x <- filt_fc_list[[i]][, 2]
+            gene_index <- which((data[, 1] %in% filt_fc_list[[i]][, 1]) == T)
+            w <- data[gene_index, colnames(filt_fc_list[[i]])[2]]
+            weighted_fc_avg <- c(weighted_fc_avg, weighted.mean(x, w))
+      }
       
       
-      res_list <- vector(mode = "list", length = 5)
+      res_list <- vector(mode = "list", length = 6)
       res_list[[1]] <- fc_list
       res_list[[2]] <- avg_fc_list
-      # res_list[[3]] <- fc_filt
-      # res_list[[4]] <- avg_fc_filt
+      res_list[[3]] <- filt_fc_list
+      res_list[[4]] <- filt_avg_list
       res_list[[5]] <- exp_data
+      res_list[[6]] <- weighted_fc_avg
       
       return (res_list)
 }

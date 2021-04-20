@@ -168,7 +168,7 @@ avg_fc <- test[[2]]
 fc_filtered <- test[[3]]
 avg_fc_filtered <- test[[4]]
 exp_data <- test[[5]]
-
+w_avg <- test[[6]]
 # ==============================================================================
 
 #                         FOLD CHANGE BETWEEN LIBRARIES
