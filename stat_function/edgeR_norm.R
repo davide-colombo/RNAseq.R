@@ -45,14 +45,16 @@ edgeR_norm <- function(data, exptresh) {
       
       # Sixth step: compute the grouped average of the fold change
       avg_fc_list <- purrr::pmap(ref_vs_other, compute_grouped_average, data = exp_data)
-      avg_fc_df <- NULL
+      
       for(i in 1:length(avg_fc_list)) {
             current <- avg_fc_list[[i]]
-            ordered <- current[order(current)]
-            avg_fc_df <- cbind(avg_fc_df, ordered)
+            current <- as.data.frame(current) %>%
+                        mutate(Gene_id = exp_data[, 1]) %>%
+                        relocate(Gene_id, .before = everything())
+            ordered <- current[order(current[, 2]), ]
+            colnames(ordered) <- paste0("Avg(log2(", ref_vs_other[i, ], "/Nk) ", collapse = " - ")
+            avg_fc_list[[i]] <- ordered
       }
-      colnames(avg_fc_df) <- apply(ref_vs_other, 1, function(x) paste0("Avg(log2(", x, "/Nk", collapse = " - "))
-      avg_fc_df <- as.data.frame(avg_fc_df)
       
       # Seventh step: filter biased genes and highly/lowly expressed genes
       # fc_tresh <- round(0.3 * nrow(fc_df))
@@ -64,7 +66,7 @@ edgeR_norm <- function(data, exptresh) {
       
       res_list <- vector(mode = "list", length = 5)
       res_list[[1]] <- fc_list
-      res_list[[2]] <- avg_fc_df
+      res_list[[2]] <- avg_fc_list
       # res_list[[3]] <- fc_filt
       # res_list[[4]] <- avg_fc_filt
       res_list[[5]] <- exp_data
