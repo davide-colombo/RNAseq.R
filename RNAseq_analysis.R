@@ -169,8 +169,8 @@ source("stat_function/compute_fold_change.R")
 fc_comparison <- data.frame(KO = colnames(cpm_rna)[grep("KO", colnames(cpm_rna))], 
                             WT = colnames(cpm_rna)[grep("WT", colnames(cpm_rna))])
 
-# Compute the fold change between groups
-fc_list <- purrr::pmap(fc_comparison, compute_fold_change, data = cpm_rna)
+# Compute the fold change between groups (only for gene expressed in each samples)
+fc_list <- purrr::pmap(fc_comparison, compute_fold_change, data = hk_genes)
 
 # Creating a suitable data frame for the 'library_histogram' function
 cpm_fc <- NULL
@@ -183,22 +183,30 @@ cpm_fc <- as.data.frame(cpm_fc)
 # Taking the name of the variables to compare
 fc_names <- colnames(cpm_fc)
 
-# Find the NaN values and indices
-na.bool <- is.na(cpm_fc)
-na.index <- which(apply(na.bool, 1, any))
+# ==============================================================================
 
-# Remove the NaN values
-filtered_cpm_fc <- cpm_fc[-na.index, ]
+# Got a problem with this: we have compute the CPM normalization on all the original
+# data. If there are some difference in the expression level of genes due to the
+# library composition, then the distribution of values will be biased.
 
-# Find the -inf/inf values and indices
-inf.bool <- t(apply(filtered_cpm_fc, 1, is.infinite))
-inf.index <- which(apply(inf.bool, 1, any))
+# # Find the NaN values and indices
+# na.bool <- is.na(cpm_fc)
+# na.index <- which(apply(na.bool, 1, any))
+# 
+# # Remove the NaN values
+# filtered_cpm_fc <- cpm_fc[-na.index, ]
+# 
+# # Find the -inf/inf values and indices
+# inf.bool <- t(apply(filtered_cpm_fc, 1, is.infinite))
+# inf.index <- which(apply(inf.bool, 1, any))
+# 
+# # Remove the -inf/inf values
+# filtered_cpm_fc <- filtered_cpm_fc[-inf.index, ]
 
-# Remove the -inf/inf values
-filtered_cpm_fc <- filtered_cpm_fc[-inf.index, ]
+# ==============================================================================
 
 # Compute the summary statistics between groups
-fc_group_list <- lapply(fc_names, within_Group_Summary, data = filtered_cpm_fc, unit = "Counts per million")
+fc_group_list <- lapply(fc_names, within_Group_Summary, data = cpm_fc, unit = "Counts per million")
 
 fc_group_summary <- NULL
 for(i in 1:length(fc_group_list)) {
@@ -208,16 +216,8 @@ for(i in 1:length(fc_group_list)) {
 # The summary of the distribution of Fold change Counts per million values between groups
 knitr::kable(fc_group_summary, format = "markdown")
 
-# We can see that the distributions of the fold change values between groups
-# are quite similar. This suggests that the normalization we have performed 
-# was good.
-
-# This confirms our hypothesis that with a number of reads that is adequately 
-# distributed, the normalization fits good.
-
-
 # Plot the histogram of the fold change between groups
-fc_hist_list <- lapply(fc_names, library_histogram, data = filtered_cpm_fc, "CPM, normalized")
+fc_hist_list <- lapply(fc_names, library_histogram, data = cpm_fc, "CPM, normalized")
 ggpubr::ggarrange(plotlist = fc_hist_list, nrow = 2, ncol = 2)
 
 

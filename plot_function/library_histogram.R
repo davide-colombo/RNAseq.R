@@ -13,8 +13,9 @@
 
 library_histogram <- function(data, target, unit) {
       ggplot2::ggplot(data = data, mapping = aes(x = data[, target])) +
-            geom_histogram(aes(y = ..density..), color = "green", alpha = 0.6, 
+            geom_histogram(aes(y = ..density..), color = "blue", fill = "green", 
                            lwd = 0.2, bins = 100, position = "identity") +
             labs(title = paste0("Histogram of ", as.character(target), " library, (", unit, ")"), 
-                 x = as.character(target))
+                 x = as.character(target)) + 
+            xlim(-5, 5)
 }
