@@ -11,11 +11,10 @@
 # @Return:
 # df:             the histogram plot take with ggplot2 library
 
-library_histogram <- function(data, target, unit) {
+library_histogram <- function(data, target, unit, ...) {
       ggplot2::ggplot(data = data, mapping = aes(x = data[, target])) +
             geom_histogram(aes(y = ..density..), color = "blue", fill = "green", 
                            lwd = 0.2, bins = 100, position = "identity") +
             labs(title = paste0("Histogram of ", as.character(target), " library, (", unit, ")"), 
-                 x = as.character(target)) + 
-            xlim(-5, 5)
+                 x = as.character(target)) + xlim(...)
 }

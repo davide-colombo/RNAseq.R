@@ -18,12 +18,11 @@ rna_data <- read.table("data/dataset.txt", header = T, sep = "\t")
 # ==============================================================================
 
 # Find the indices of the low expressed gene
-bool_expression <- rna_data[, -1] <= rep(5, ncol(rna_data)-1)
-not_exp_index <- which(apply(bool_expression, 1, all) == T)
+bool_exp <- rna_data[, -1] > 5
+exp_index <- which(apply(bool_exp, 1, all) == T)
 
 # Divide the data set into expressed and not expressed gene
-not_exp_gene <- rna_data[not_exp_index, ]
-exp_gene <- rna_data[-not_exp_index, ]
+exp_gene <- rna_data[exp_index, ]
 
 # ==============================================================================
 
@@ -32,7 +31,7 @@ exp_gene <- rna_data[-not_exp_index, ]
 # ==============================================================================
 
 # Get the count of reads for each library
-Nk <- colSums(rna_data[, -1]) / 10^6
+Nk <- colSums(exp_gene[, -1]) / 10^6
 knitr::kable(Nk, format = "markdown")
 
 # Try to understand if there are any significative difference in the number of reads
@@ -76,18 +75,18 @@ ggplot(mapping = aes(x = mean_sd_Nk_norm)) +
 
 # In this way, the focus stays on the housekeeping genes.
 
-de.bool <- rna_data[, -1] == 0
-de.index <- which(apply(de.bool, 1, any) == T)
-hk_genes <- rna_data[-de.index, ]
-
-# Now, compute the normalization based on Counts per million
-
-hk_Nk <- colSums(hk_genes[, -1]) / 10^6
-knitr::kable(hk_Nk, format = "markdown")
-
-hk_cpm <- as.data.frame(t(apply(hk_genes[, -1], 1, '/', hk_Nk))) %>%
-            mutate(Gene_id = hk_genes$Gene_id) %>%
-            relocate(Gene_id, .before = everything())
+# de.bool <- rna_data[, -1] == 0
+# de.index <- which(apply(de.bool, 1, any) == T)
+# hk_genes <- rna_data[-de.index, ]
+# 
+# # Now, compute the normalization based on Counts per million
+# 
+# hk_Nk <- colSums(hk_genes[, -1]) / 10^6
+# knitr::kable(hk_Nk, format = "markdown")
+# 
+# hk_cpm <- as.data.frame(t(apply(hk_genes[, -1], 1, '/', hk_Nk))) %>%
+#             mutate(Gene_id = hk_genes$Gene_id) %>%
+#             relocate(Gene_id, .before = everything())
 
 # The distribution of reads does not change very much, this suggest that
 # the samples probably do not belongs to different tissues.
@@ -103,9 +102,8 @@ source("stat_function/within_Group_Summary.R")
 source("plot_function/library_histogram.R")
 
 # Counts per million normalization
-cpm_library <- as.data.frame(t(apply(rna_data[, -1], 1, '/', Nk)))
-cpm_rna <- cpm_library %>%
-            mutate(Gene_id = rna_data$Gene_id) %>%
+cpm_rna <- as.data.frame(t(apply(exp_gene[, -1], 1, '/', Nk))) %>%
+            mutate(Gene_id = exp_gene$Gene_id) %>%
             relocate(Gene_id, .before = everything())
 
 # Extract the name of the libraries (samples)
@@ -124,7 +122,7 @@ for(i in 1:length(cpm_summary_list)){
 knitr::kable(cpm_summary, format = "markdown")
 
 # Plot the distribution of the gene expression for each library
-histogram_list <- lapply(library_names, library_histogram, data = cpm_rna, unit = "CPM, unormalized")
+histogram_list <- lapply(library_names, library_histogram, data = cpm_rna, unit = "CPM, unormalized", c(0, 1500))
 ggpubr::ggarrange(plotlist = histogram_list, nrow = 2, ncol = 4)
 
 # ==============================================================================
@@ -170,14 +168,14 @@ fc_comparison <- data.frame(KO = colnames(cpm_rna)[grep("KO", colnames(cpm_rna))
                             WT = colnames(cpm_rna)[grep("WT", colnames(cpm_rna))])
 
 # Compute the fold change between groups (only for gene expressed in each samples)
-fc_list <- purrr::pmap(fc_comparison, compute_fold_change, data = hk_genes)
+fc_list <- purrr::pmap(fc_comparison, compute_fold_change, data = cpm_rna)
 
 # Creating a suitable data frame for the 'library_histogram' function
 cpm_fc <- NULL
 for(i in 1:length(fc_list)) {
       cpm_fc <- cbind(cpm_fc, fc_list[[i]])
 }
-colnames(cpm_fc) <- apply(fc_comparison, 1, function(x) paste("log2(", x, "/Nk) ", collapse = " - "))
+colnames(cpm_fc) <- apply(fc_comparison, 1, function(x) paste0("log2(", x, "/Nk) ", collapse = " - "))
 cpm_fc <- as.data.frame(cpm_fc)
 
 # Taking the name of the variables to compare
@@ -217,12 +215,8 @@ for(i in 1:length(fc_group_list)) {
 knitr::kable(fc_group_summary, format = "markdown")
 
 # Plot the histogram of the fold change between groups
-fc_hist_list <- lapply(fc_names, library_histogram, data = cpm_fc, "CPM, normalized")
+fc_hist_list <- lapply(fc_names, library_histogram, data = cpm_fc, "CPM, normalized", c(-4, 4))
 ggpubr::ggarrange(plotlist = fc_hist_list, nrow = 2, ncol = 2)
-
-
-
-
 
 # ==============================================================================
 
