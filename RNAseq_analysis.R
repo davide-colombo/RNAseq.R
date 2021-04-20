@@ -162,13 +162,10 @@ ggpubr::ggarrange(plotlist = cpm_barplot_list, nrow = 2, ncol = 4)
 # ==============================================================================
 
 source("stat_function/edgeR_norm.R")
-test <- edgeR_norm(data = rna_data, exptresh = 5)
-fc <- test[[1]]
-avg_fc <- test[[2]]
-fc_filtered <- test[[3]]
-avg_fc_filtered <- test[[4]]
-exp_data <- test[[5]]
-w_avg <- test[[6]]
+scaling_factors <- edgeR_norm(data = rna_data, exptresh = 5)
+
+
+
 # ==============================================================================
 
 #                         FOLD CHANGE BETWEEN LIBRARIES

@@ -1,6 +1,7 @@
 
 source("stat_function/compute_fold_change.R")
 source("stat_function/compute_grouped_average.R")
+source("stat_function/filter_top_bottom.R")
 
 edgeR_norm <- function(data, exptresh) {
       
@@ -77,16 +78,10 @@ edgeR_norm <- function(data, exptresh) {
             weighted_fc_avg <- c(weighted_fc_avg, weighted.mean(x, w))
       }
       
+      # Tenth step: convert the weighted averages in normal numbers
+      scaling_factors <- 2^weighted_fc_avg
       
-      res_list <- vector(mode = "list", length = 6)
-      res_list[[1]] <- fc_list
-      res_list[[2]] <- avg_fc_list
-      res_list[[3]] <- filt_fc_list
-      res_list[[4]] <- filt_avg_list
-      res_list[[5]] <- exp_data
-      res_list[[6]] <- weighted_fc_avg
-      
-      return (res_list)
+      return (scaling_factors)
 }
 
 
