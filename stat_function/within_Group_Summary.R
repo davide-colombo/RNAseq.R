@@ -15,9 +15,9 @@
 
 within_Group_Summary <- function(data, target, unit) {
       df <- data.frame(library = target,
-                       min = min(data[, target]), 
-                       max = max(data[, target]))
-      quantiles <- quantile(data[, target], probs = seq(0, 1, .25))
+                       min = min(data[, target], na.rm = T), 
+                       max = max(data[, target], na.rm = T))
+      quantiles <- quantile(data[, target], probs = seq(0, 1, .25), na.rm = T)
       quantile_df <- data.frame(q.25 = quantiles[2],
                                 q.50 = quantiles[3],
                                 mean = mean(data[, target], na.rm = T),

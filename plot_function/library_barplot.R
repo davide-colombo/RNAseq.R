@@ -18,7 +18,7 @@ library_barplot <- function(data, target, unit) {
       ggplot2::ggplot(data = df, mapping = aes(x = df[, 1], y = df[, 2])) +
             geom_col(color = "yellow", fill = "red") +
             coord_flip() + 
-            labs(title = paste0("CPM distribution of the m. exp. 30 gene in ", as.character(target)), 
+            labs(title = paste0("Distribution of the m. exp. 30 gene in ", as.character(target)), 
                  x = paste0(as.name(target)),
                  y = paste0(as.character(unit))) +
             theme(axis.text.x = element_text(angle = 60, hjust = 1))

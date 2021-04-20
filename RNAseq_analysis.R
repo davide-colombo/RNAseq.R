@@ -27,6 +27,73 @@ exp_gene <- rna_data[-not_exp_index, ]
 
 # ==============================================================================
 
+#                          SEQUENCING DEPTH INSPECTION
+
+# ==============================================================================
+
+# Get the count of reads for each library
+Nk <- colSums(rna_data[, -1]) / 10^6
+knitr::kable(Nk, format = "markdown")
+
+# Try to understand if there are any significative difference in the number of reads
+# obtained in each samples. This is important because we have to take in account
+# that the higher the number of reads in a library, the more could be the bias in
+# the effective level of expression of gene.
+
+# In practice, if the distribution of FC values computed on normalized data is not
+# centered, this means that the normalization represents a bias for our measures. 
+
+# Min and max normalized number of reads for each group
+min_max_Nk_norm <- (Nk - min(Nk)) / (max(Nk) - min(Nk))
+ggplot(mapping = aes(x = min_max_Nk_norm)) + 
+      geom_histogram(color = "blue", alpha = 0.9, fill = "lightblue", 
+                     position = "identity", bins = 30) + 
+      labs(title = "Distribution of Nk values (Min-Max normalized)",
+           x = "Normalized Nk values")
+
+# Mean and standard deviation normalized number of reads for each group
+mean_sd_Nk_norm <- (Nk - mean(Nk)) / sd(Nk)
+ggplot(mapping = aes(x = mean_sd_Nk_norm)) + 
+      geom_histogram(color = "blue", alpha = 0.9, fill = "lightblue", 
+                     position = "identity", bins = 30) + 
+      labs(title = "Distribution of Nk values (Mean-sd normalized)",
+           x = "Normalized Nk values")
+
+# ==============================================================================
+
+#                           LIBRARY COMPOSITION
+
+# ==============================================================================
+
+# It could be that two libraries have the same number of reads but there are
+# genes with high level of expression that increase the bias due to the fact that
+# a different number of reads per gene with the same total number of reads increases
+# the differences in expression, so the expression between samples appears larger.
+
+# In order to use the Counts per million normalization, we might incurr in biases
+# because of the library compositions. So before computing the CPM normalization, 
+# I decide to remove the gene with 0 reads in at least one sample.
+
+# In this way, the focus stays on the housekeeping genes.
+
+de.bool <- rna_data[, -1] == 0
+de.index <- which(apply(de.bool, 1, any) == T)
+hk_genes <- rna_data[-de.index, ]
+
+# Now, compute the normalization based on Counts per million
+
+hk_Nk <- colSums(hk_genes[, -1]) / 10^6
+knitr::kable(hk_Nk, format = "markdown")
+
+hk_cpm <- as.data.frame(t(apply(hk_genes[, -1], 1, '/', hk_Nk))) %>%
+            mutate(Gene_id = hk_genes$Gene_id) %>%
+            relocate(Gene_id, .before = everything())
+
+# The distribution of reads does not change very much, this suggest that
+# the samples probably do not belongs to different tissues.
+
+# ==============================================================================
+
 #                          COUNTS PER MILLION NORMALIZATION
 #                             (WITHIN GROUPS VARIABILITY)
 
@@ -34,9 +101,6 @@ exp_gene <- rna_data[-not_exp_index, ]
 
 source("stat_function/within_Group_Summary.R")
 source("plot_function/library_histogram.R")
-
-# Get the count of reads for each library
-Nk <- colSums(rna_data[, -1])
 
 # Counts per million normalization
 cpm_library <- as.data.frame(t(apply(rna_data[, -1], 1, '/', Nk)))
@@ -48,7 +112,7 @@ cpm_rna <- cpm_library %>%
 library_names <- colnames(cpm_rna[, -1])
 
 # Compute the summary
-cpm_summary_list <- lapply(library_names, within_Group_Summary, data = cpm_rna[, -1], unit = "cpm")
+cpm_summary_list <- lapply(library_names, within_Group_Summary, data = cpm_rna[, -1], unit = "Counts per million")
 
 # Transform in data frame
 cpm_summary <- NULL
@@ -60,7 +124,7 @@ for(i in 1:length(cpm_summary_list)){
 knitr::kable(cpm_summary, format = "markdown")
 
 # Plot the distribution of the gene expression for each library
-histogram_list <- lapply(library_names, library_histogram, data = cpm_rna)
+histogram_list <- lapply(library_names, library_histogram, data = cpm_rna, unit = "CPM, unormalized")
 ggpubr::ggarrange(plotlist = histogram_list, nrow = 2, ncol = 4)
 
 # ==============================================================================
@@ -95,25 +159,70 @@ ggpubr::ggarrange(plotlist = cpm_barplot_list, nrow = 2, ncol = 4)
 
 # ==============================================================================
 
-#                         FOLD CHANGE BETWEEN SAMPLES
+#                         FOLD CHANGE BETWEEN LIBRARIES
 
 # ==============================================================================
 
-group_comparison <- data.frame(KO = colnames(cpm_rna)[grep("KO", colnames(cpm_rna))], 
-                                 WT = colnames(cpm_rna)[grep("WT", colnames(cpm_rna))])
+source("stat_function/compute_fold_change.R")
+
+# Define the labels of the group of variables to compare
+fc_comparison <- data.frame(KO = colnames(cpm_rna)[grep("KO", colnames(cpm_rna))], 
+                            WT = colnames(cpm_rna)[grep("WT", colnames(cpm_rna))])
+
 # Compute the fold change between groups
-fc <- purrr::pmap(group_comparison, compute_fold_change, data = cpm_rna)
+fc_list <- purrr::pmap(fc_comparison, compute_fold_change, data = cpm_rna)
 
-cpm_rna_fc <- NULL
-for(i in 1:length(fc)) {
-      cpm_rna_fc <- cbind(cpm_rna_fc, fc[[i]])
+# Creating a suitable data frame for the 'library_histogram' function
+cpm_fc <- NULL
+for(i in 1:length(fc_list)) {
+      cpm_fc <- cbind(cpm_fc, fc_list[[i]])
 }
-colnames(cpm_rna_fc) <- apply(group_comparison, 1, function(x) paste("log2(", x, "/Nk) ", collapse = " - "))
-cpm_rna_fc <- as.data.frame(cpm_rna_fc)
+colnames(cpm_fc) <- apply(fc_comparison, 1, function(x) paste("log2(", x, "/Nk) ", collapse = " - "))
+cpm_fc <- as.data.frame(cpm_fc)
 
-fc_names <- colnames(cpm_rna_fc)
-fc_hist_list <- lapply(fc_names, library_histogram, data = cpm_rna_fc)
+# Taking the name of the variables to compare
+fc_names <- colnames(cpm_fc)
+
+# Find the NaN values and indices
+na.bool <- is.na(cpm_fc)
+na.index <- which(apply(na.bool, 1, any))
+
+# Remove the NaN values
+filtered_cpm_fc <- cpm_fc[-na.index, ]
+
+# Find the -inf/inf values and indices
+inf.bool <- t(apply(filtered_cpm_fc, 1, is.infinite))
+inf.index <- which(apply(inf.bool, 1, any))
+
+# Remove the -inf/inf values
+filtered_cpm_fc <- filtered_cpm_fc[-inf.index, ]
+
+# Compute the summary statistics between groups
+fc_group_list <- lapply(fc_names, within_Group_Summary, data = filtered_cpm_fc, unit = "Counts per million")
+
+fc_group_summary <- NULL
+for(i in 1:length(fc_group_list)) {
+      fc_group_summary <- rbind(fc_group_summary, fc_group_list[[i]])
+}
+
+# The summary of the distribution of Fold change Counts per million values between groups
+knitr::kable(fc_group_summary, format = "markdown")
+
+# We can see that the distributions of the fold change values between groups
+# are quite similar. This suggests that the normalization we have performed 
+# was good.
+
+# This confirms our hypothesis that with a number of reads that is adequately 
+# distributed, the normalization fits good.
+
+
+# Plot the histogram of the fold change between groups
+fc_hist_list <- lapply(fc_names, library_histogram, data = filtered_cpm_fc, "CPM, normalized")
 ggpubr::ggarrange(plotlist = fc_hist_list, nrow = 2, ncol = 2)
+
+
+
+
 
 # ==============================================================================
 
