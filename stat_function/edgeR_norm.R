@@ -27,12 +27,16 @@ edgeR_norm <- function(data, exptresh) {
                            purrr::cross_df()
       fc_list <- purrr::pmap(ref_vs_other, compute_fold_change, data = exp_data)
       
-      fc_df <- NULL
       for(i in 1:length(fc_list)) {
-            fc_df <- cbind(fc_df, fc_list[[i]])
+            current <- fc_list[[i]]
+            current <- as.data.frame(current) %>%
+                        mutate(Gene_id = exp_data[, 1]) %>%
+                        relocate(Gene_id, .before = everything())
+            
+            ordered <- current[order(current[, 2]), ]
+            colnames(ordered)[2] <- paste0("log2(", ref_vs_other[i, ], "/Nk) ", collapse = " - ")
+            fc_list[[i]] <- ordered
       }
-      colnames(fc_df) <- apply(ref_vs_other, 1, function(x) paste0("log2(", x, "/Nk) ", collapse = " - "))
-      fc_df <- as.data.frame(fc_df)
       
       # # Fifth step: remove the -inf values in the log2 fold change computation
       # inf_bool <- t(apply(fc_df, 1, is.infinite))
@@ -43,14 +47,27 @@ edgeR_norm <- function(data, exptresh) {
       avg_fc_list <- purrr::pmap(ref_vs_other, compute_grouped_average, data = exp_data)
       avg_fc_df <- NULL
       for(i in 1:length(avg_fc_list)) {
-            avg_fc_df <- cbind(avg_fc_df, avg_fc_list[[i]])
+            current <- avg_fc_list[[i]]
+            ordered <- current[order(current)]
+            avg_fc_df <- cbind(avg_fc_df, ordered)
       }
       colnames(avg_fc_df) <- apply(ref_vs_other, 1, function(x) paste0("Avg(log2(", x, "/Nk", collapse = " - "))
       avg_fc_df <- as.data.frame(avg_fc_df)
       
-      res_list <- vector(mode = "list", length = 2)
-      res_list[[1]] <- fc_df
+      # Seventh step: filter biased genes and highly/lowly expressed genes
+      # fc_tresh <- round(0.3 * nrow(fc_df))
+      # fc_filt <- fc_df[(fc_tresh+1):(nrow(fc_df)-fc_tresh), ]
+      # 
+      # avg_fc_tresh <- round(0.05*nrow(avg_fc_df))
+      # avg_fc_filt <- avg_fc_df[(avg_fc_tresh+1):(nrow(avg_fc_df)-avg_fc_tresh), ]
+      
+      
+      res_list <- vector(mode = "list", length = 5)
+      res_list[[1]] <- fc_list
       res_list[[2]] <- avg_fc_df
+      # res_list[[3]] <- fc_filt
+      # res_list[[4]] <- avg_fc_filt
+      res_list[[5]] <- exp_data
       
       return (res_list)
 }

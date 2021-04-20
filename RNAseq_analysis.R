@@ -165,7 +165,9 @@ source("stat_function/edgeR_norm.R")
 test <- edgeR_norm(data = rna_data, exptresh = 5)
 fc <- test[[1]]
 avg_fc <- test[[2]]
-
+fc_filtered <- test[[3]]
+avg_fc_filtered <- test[[4]]
+exp_data <- test[[5]]
 
 # ==============================================================================
 
